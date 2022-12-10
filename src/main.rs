@@ -1,3 +1,5 @@
+use aoc_2022_rust::*;
+
 fn main() {
-    println!("Hello, world!");
+    day01::day01();
 }
