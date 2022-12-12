@@ -1,4 +1,4 @@
-use std::{error::{self, Error}, fmt, str::FromStr};
+use std::{error, fmt, str::FromStr};
 
 #[derive(Debug)]
 struct InvalidHandError {
