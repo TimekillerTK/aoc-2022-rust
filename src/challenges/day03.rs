@@ -1,8 +1,6 @@
-
 use anyhow::anyhow;
-use itertools::Itertools;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Item {
     letter: char,
     priority: u32
@@ -26,63 +24,70 @@ impl TryFrom<u8> for Item {
     }
 }
 
+const DATA: &str = include_str!("day03-data.txt");
+
 pub fn day03() -> anyhow::Result<()> {
 
-    let mut priority_sum = 0;
-    let lines = include_str!("day03-data.txt").lines();
+    let mut p1_output = 0;
+    let lines = DATA.lines();
 
     for line in lines {
 
-        let (first_half, second_half) = line.split_at(line.len() / 2);
-
-        let one = first_half
+        // build vector of items
+        let line_vec = line
             .bytes()
             .map(Item::try_from)
             .map(|x| x.unwrap())
             .collect::<Vec<_>>();
 
-        let two = second_half
-            .bytes()
-            .map(Item::try_from)
-            .map(|x| x.unwrap())
-            .collect::<Vec<_>>();
+        // split vector into half
+        let (first_half, 
+            second_half) = line_vec.split_at(line.len() / 2);
 
-        let common_item = one
+        // find common item in both halves
+        let common_item = first_half
             .iter()
             .filter(|&x| 
-                two.iter()
+                second_half.iter()
                 .any(|y| x == y))
-            .next().map(|x| *x)
+            .next()
+            .map(|x| *x)
             .unwrap();
 
-        // println!(" FILTER: {:?}", &common_item.letter);
-        priority_sum = priority_sum + &common_item.priority;
+        // get the common item's priority & sum
+        p1_output = p1_output + &common_item.priority;
+
     };
 
-    // let lines = include_str!("day03-data.txt")
-    //     .lines()
-    //     .map(|x| 
-    //         x.bytes()
-    //         .map(|y| 
-    //             Item::try_from(y))
-    //         .collect::<Vec<_>>()
-    //     )
+
+    let lines = DATA.lines().collect::<Vec<_>>();
+
+    // build vector of vectors
+    let vector_of_vectors = lines
+        .iter()
+        .map(|x| 
+            x.bytes()
+            .map(Item::try_from)
+            .map(|x| x.unwrap())
+            .collect::<Vec<Item>>())
+        .collect::<Vec<Vec<Item>>>();
+
+    let p2_output: u32 = vector_of_vectors
+        .chunks(3)
+        .map(|x| {
+            let (x1, x2, x3) = (&x[0], &x[1], &x[2]);
+            x1
+                .iter()
+                .find(|a| x2.contains(*a) && x3.contains(*a))
+                .unwrap()
+                .priority
+
+        })
+        .sum();
         
-    
-    // println!("LINETEST: {lines:#?}");
-        
-        // .map(|x| {
-        //     x.bytes()
-        //     .Item::try_from)
-        //     .collect::Vec<_>>()
-        // })
-        // .chunks(3);
-    // for line in lines {
-    //     println!("Line: {:?}", line)
-    //     let test_line = line.split
-    // }
     println!("------------------------DAY03------------------------");
-    println!("Priority sum would be: {}", priority_sum);
+    println!("Part One: Priority sum would be: {p1_output}");
+    println!("Part Two: Sum of priorities is: {p2_output}");
     println!("-----------------------------------------------------\n");
 
     Ok(())
