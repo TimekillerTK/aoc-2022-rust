@@ -1,21 +1,5 @@
 use std::{error, fmt, str::FromStr};
-
-#[derive(Debug)]
-struct InvalidHandError {
-    source: char,
-}
-
-impl error::Error for InvalidHandError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        Some(self)
-    }
-}
-
-impl fmt::Display for InvalidHandError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Invalid hand specified: {:?}", self.source)
-    }
-}
+use anyhow::anyhow;
 
 #[derive(Debug, Clone, Copy)]
 enum Hand {
@@ -49,54 +33,54 @@ impl Hand {
 }
 
 impl TryFrom<char> for Hand {
-    type Error = InvalidHandError;
+    type Error = anyhow::Error;
 
     fn try_from(x: char) -> Result<Self, Self::Error> {
         match x {
             'A' | 'X' => Ok(Hand::Rock),
             'B' | 'Y' => Ok(Hand::Paper),
             'C' | 'Z' => Ok(Hand::Scissors),
-            _ => Err(InvalidHandError { source: x })
+            _ => Err(anyhow!("Invalid character: {x}"))
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 struct Round {
-    player_one: Hand,
-    player_two: Hand,
+    player: Hand,
+    opponent: Hand,
 }
 
 
 impl Round {
-    fn outcome(self) -> RoundResult {
-        self.player_one.result(self.player_two)
+    fn player_one_outcome(self) -> RoundResult {
+        self.player.result(self.opponent)
     }
 
     fn player_one_score(self) -> u32 {
-        self.player_one.choice_score() + self.outcome().score()
+        self.player.choice_score() + self.player_one_outcome().score()
     }
 }
 
 impl FromStr for Round {
-    type Err = InvalidHandError;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
 
         let mut chars = s.chars();
-        let (Some(player_one), 
+        let (Some(player_two), 
              Some(' '),
-             Some(player_two), 
+             Some(player_one), 
              None) = (chars.next(), 
                                     chars.next(), 
                                     chars.next(), 
                                     chars.next()) else {
-            return Err(InvalidHandError { source: 's'}); // fix this later
+            return Err(anyhow!("Invalid Input: {s}"));
         };
         
         Ok(Self {
-            player_one: player_one.try_into()?,
-            player_two: player_two.try_into()?
+            player: player_one.try_into()?,
+            opponent: player_two.try_into()?
         })
 
     }
@@ -119,16 +103,7 @@ impl RoundResult {
     }
 }
 
-pub fn day02() {
-    
-    println!("------------------------DAY02------------------------");
-    // let rounds = include_str!("day02-data.txt")
-    //     .lines()
-    //     .map(|x| x.parse::<Round>());
-    // for round in rounds {
-    //     let round = round.unwrap();
-    //     println!("{:?}: Result: {:?}, Player One Score: {}", round, round.outcome(), round.player_one_score())
-    // }
+pub fn day02() -> anyhow::Result<()>{
     
     let total_score = include_str!("day02-data.txt")
         .lines()
@@ -136,8 +111,11 @@ pub fn day02() {
         .map(|y| y.unwrap().player_one_score())
         .sum::<u32>();
 
+    println!("------------------------DAY02------------------------");
     println!("Total Score would be: {}", total_score);
     // println!("Top 3 elves are carrying: {:?} and the sum is: {}", top3, sum_of_top3);
     println!("-----------------------------------------------------\n");
+
+    Ok(())
 
 } 
