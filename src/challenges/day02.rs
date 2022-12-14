@@ -1,5 +1,7 @@
-use std::{error, fmt, str::FromStr};
-use anyhow::anyhow;
+use std::{str::FromStr};
+use anyhow::{anyhow, Ok};
+
+const DATA: &str = include_str!("day02-data.txt");
 
 #[derive(Debug, Clone, Copy)]
 enum Hand {
@@ -17,7 +19,7 @@ impl Hand {
         }
     }
 
-    fn result(self, player_two: Hand) -> RoundResult {
+    fn round_one_result(self, player_two: Hand) -> RoundResult {
         match (self, player_two) {
             (Hand::Rock, Hand::Rock) => RoundResult::Draw,
             (Hand::Rock, Hand::Paper) => RoundResult::Lose,
@@ -28,6 +30,20 @@ impl Hand {
             (Hand::Scissors, Hand::Rock) => RoundResult::Lose,
             (Hand::Scissors, Hand::Paper) => RoundResult::Win,
             (Hand::Scissors, Hand::Scissors) => RoundResult::Draw,
+        }
+    }
+
+    fn round_two_hand(self, roundend: RoundResult) -> Hand {
+        match (self, roundend) {
+            (Hand::Rock, RoundResult::Draw) => Hand::Rock,
+            (Hand::Paper, RoundResult::Draw) => Hand::Paper,
+            (Hand::Scissors, RoundResult::Draw) => Hand::Scissors,
+            (Hand::Rock, RoundResult::Lose) => Hand::Scissors,
+            (Hand::Paper, RoundResult::Lose) => Hand::Rock,
+            (Hand::Scissors, RoundResult::Lose) => Hand::Paper,
+            (Hand::Rock, RoundResult::Win) => Hand::Paper,
+            (Hand::Paper, RoundResult::Win) => Hand::Scissors,
+            (Hand::Scissors, RoundResult::Win) => Hand::Rock,
         }
     }
 }
@@ -46,15 +62,14 @@ impl TryFrom<char> for Hand {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Round {
-    player: Hand,
+struct RoundPartOne {
     opponent: Hand,
+    player: Hand,
 }
 
-
-impl Round {
+impl RoundPartOne {
     fn player_one_outcome(self) -> RoundResult {
-        self.player.result(self.opponent)
+        self.player.round_one_result(self.opponent)
     }
 
     fn player_one_score(self) -> u32 {
@@ -62,15 +77,15 @@ impl Round {
     }
 }
 
-impl FromStr for Round {
+impl FromStr for RoundPartOne {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
 
         let mut chars = s.chars();
-        let (Some(player_two), 
+        let (Some(opponent), 
              Some(' '),
-             Some(player_one), 
+             Some(player), 
              None) = (chars.next(), 
                                     chars.next(), 
                                     chars.next(), 
@@ -79,14 +94,53 @@ impl FromStr for Round {
         };
         
         Ok(Self {
-            player: player_one.try_into()?,
-            opponent: player_two.try_into()?
+            player: player.try_into()?,
+            opponent: opponent.try_into()?
         })
 
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+struct RoundPartTwo {
+    opponent: Hand,
+    roundend: RoundResult,
+}
+
+impl RoundPartTwo {
+    fn player_one_choice(self) -> Hand {
+        self.opponent.round_two_hand(self.roundend)
+    }
+
+    fn player_one_score(self) -> u32 {
+        self.player_one_choice().choice_score() + self.roundend.score()
+    }
+}
+
+impl FromStr for RoundPartTwo {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+
+        let mut chars = s.chars();
+        let (Some(opponent),
+             Some(' '),
+             Some(roundend),
+             None) = (chars.next(),
+                                    chars.next(),
+                                    chars.next(),
+                                    chars.next()) else {
+            return Err(anyhow!("Invalid input: {s}"));
+        };
+
+        Ok(Self {
+            opponent: opponent.try_into()?,
+            roundend: roundend.try_into()?
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 enum RoundResult {
     Win,
     Lose,
@@ -103,17 +157,35 @@ impl RoundResult {
     }
 }
 
+impl TryFrom<char> for RoundResult {
+    type Error = anyhow::Error;
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            'Y' => Ok(RoundResult::Draw),
+            'X' => Ok(RoundResult::Lose),
+            'Z' => Ok(RoundResult::Win),
+            _ => Err(anyhow!("Invalid character: {value}"))
+        }
+    }
+}
+
 pub fn day02() -> anyhow::Result<()>{
     
-    let total_score = include_str!("day02-data.txt")
+    let round_one_score = DATA
         .lines()
-        .map(|x| x.parse::<Round>())
+        .map(|x| x.parse::<RoundPartOne>())
         .map(|y| y.unwrap().player_one_score())
         .sum::<u32>();
 
+    let round_two_score = DATA
+        .lines()
+        .map(|x| x.parse::<RoundPartTwo>())
+        .map(|y| y.unwrap().player_one_score())
+        .sum::<u32>();
     println!("------------------------DAY02------------------------");
-    println!("Total Score would be: {}", total_score);
-    // println!("Top 3 elves are carrying: {:?} and the sum is: {}", top3, sum_of_top3);
+    println!("Round One Total Score would be: {}", round_one_score);
+    println!("Round Two Total Score would be: {}", round_two_score);
     println!("-----------------------------------------------------\n");
 
     Ok(())
